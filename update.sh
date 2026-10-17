@@ -3,6 +3,10 @@
 # Runs locally because datos.produccion.gob.ar blocks GitHub-hosted runners (403).
 set -euo pipefail
 cd "$(dirname "$0")"
+# scheduled tasks run a non-interactive shell without brew on PATH
+[ -d /home/linuxbrew/.linuxbrew/bin ] && export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+# never keep the downloaded dump or the built CSV locally, pass or fail
+trap 'rm -rf dist' EXIT
 python3 test_dataset.py
 python3 build_dataset.py
 gh release view datos >/dev/null 2>&1 || gh release create datos \
