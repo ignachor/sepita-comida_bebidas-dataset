@@ -15,6 +15,10 @@ export interface Product {
   ean: string;
   nombre: string;
   marca: string;
+  marca_normalizada: string;
+  nombre_normalizado: string;
+  cantidad: number | null;
+  unidad: "g" | "ml" | "un" | "";
   categoria: "Comidas" | "Bebidas";
   subcategoria: string;
   n_cadenas: number;
@@ -35,7 +39,7 @@ async function get<T>(path: string, params: Record<string, string>): Promise<T> 
   return res.json();
 }
 
-const SELECT = "ean,nombre,marca,categoria,subcategoria,n_cadenas,precio_mediano,precios(cadena,n_sucursales,precio_min,precio_promedio,precio_max)";
+const SELECT = "ean,nombre,marca,marca_normalizada,nombre_normalizado,cantidad,unidad,categoria,subcategoria,n_cadenas,precio_mediano,precios(cadena,n_sucursales,precio_min,precio_promedio,precio_max)";
 
 /** Every word of the query must appear in `busqueda`. Most widely sold products first. */
 export function searchProducts(query: string, limit = 20, offset = 0): Promise<Product[]> {

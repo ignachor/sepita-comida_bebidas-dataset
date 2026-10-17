@@ -33,6 +33,18 @@ curl -G "https://fbhzibcingdanzlrslrq.supabase.co/rest/v1/productos" \
 
 Los joins funcionan porque `precios.ean` referencia a `productos.ean`.
 
+### Campos normalizados
+
+Cada producto trae, además de los datos originales de la fuente, una estructura uniforme:
+
+| campo | ejemplo |
+|---|---|
+| `nombre_normalizado` | `Fernet Branca Menta 750 ml` |
+| `marca_normalizada` | `Branca` (vacía si no se pudo determinar) |
+| `cantidad` y `unidad` | `750` y `ml` (las unidades son solo `g`, `ml` o `un`; `kg` y `l` se convierten) |
+
+Para mostrar productos en pantalla usa `nombre_normalizado`; `nombre` y `marca` quedan como respaldo.
+
 ## 3. Usarla desde TypeScript
 
 `examples/api.ts` encapsula todo lo anterior (tipado, sin dependencias). Cópialo a tu aplicación:
@@ -66,9 +78,9 @@ Salida esperada (los precios cambian a diario; el formato se mantiene):
 
 ```
 Search "Fernet Branca 750" -> 3 results
-- APERITIVO FERNET [VITTONE] EAN 7790290101459, 9 chains, cheapest: Supermercados DIA $6765.91
-- APERITIVO FERNET [BRANCA] EAN 7790290101602, 9 chains, cheapest: Sup. Unicoop $13734
-- FERNET MENTA [BRANC] EAN 7790290101473, 8 chains, cheapest: Sup. Unicoop $14689
+- Aperitivo Fernet 750 ml [Vittone] EAN 7790290101459, 9 chains, cheapest: Supermercados DIA $6765.91
+- Aperitivo Fernet 750 ml [Branca] EAN 7790290101602, 9 chains, cheapest: Sup. Unicoop $13734
+- Fernet Menta 750 ml [Branc] EAN 7790290101473, 8 chains, cheapest: Sup. Unicoop $14689
 
 By EAN 7790290101459: Bebidas / Aperitivos y destilados, median $7200
   Cooperativa Obrera Limitada de Consumo y Vivienda: $7473.14 (155 branches)

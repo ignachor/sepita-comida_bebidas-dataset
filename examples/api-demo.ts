@@ -6,7 +6,7 @@ const found = await searchProducts("Fernet Branca 750", 3);
 console.log(`Search "Fernet Branca 750" -> ${found.length} results`);
 for (const p of found) {
   const best = cheapestPrice(p);
-  console.log(`- ${p.nombre} [${p.marca}] EAN ${p.ean}, ${p.n_cadenas} chains, cheapest: ${best.cadena} $${best.precio_promedio}`);
+  console.log(`- ${p.nombre_normalizado} [${p.marca_normalizada}] EAN ${p.ean}, ${p.n_cadenas} chains, cheapest: ${best.cadena} $${best.precio_promedio}`);
 }
 
 const one = await getByEan(found[0].ean);

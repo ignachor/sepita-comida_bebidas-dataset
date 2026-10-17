@@ -33,6 +33,19 @@ WHERE busqueda LIKE '%fernet%' AND busqueda LIKE '%branca%' AND busqueda LIKE '%
 
 Normaliza la consulta del usuario de la misma manera (minúsculas, sin tildes, puntuación convertida en espacios).
 
+### Normalización (`normalizer.py`)
+
+`productos.csv` conserva los datos originales y agrega una estructura uniforme, calculada con reglas fijas en cada ejecución:
+
+| columna | qué hace |
+|---|---|
+| `nombre_normalizado` | formato título, sin ruido de envase (`BOT-750-ml.`) y con el tamaño al final: `Fernet Branca Menta 750 ml` |
+| `marca_normalizada` | completa marcas cortadas solo si el nombre contiene la palabra entera; vacía si no hay marca |
+| `cantidad`, `unidad` | unidades unificadas a `g`, `ml` y `un` (`kg` y `l` se convierten); corrige unidades mal cargadas en la fuente |
+
+Las correcciones manuales de marcas van en [`marcas.csv`](marcas.csv) (`alias,marca`) y tienen prioridad sobre las reglas.
+No separa todavía el tipo de producto ni la variante.
+
 ## Columnas (`comidas_y_bebidas.csv`)
 
 Una fila por **cadena + EAN**; los precios se agregan entre las sucursales de esa cadena.
