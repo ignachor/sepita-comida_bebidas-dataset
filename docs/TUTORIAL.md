@@ -1,50 +1,52 @@
-# Tutorial: consuming the dataset from TypeScript
+# Tutorial: consumir el dataset desde TypeScript
 
-The repo has no API: it publishes two static files that are refreshed daily.
-You download them with `fetch` and filter on the client.
+Este tutorial usa los archivos estáticos de la release, sin API: se descargan con `fetch` y se filtran en el cliente.
+Los archivos se actualizan a diario.
 
-| File | URL |
+| Archivo | URL |
 |---|---|
 | CSV | `https://github.com/ignachor/sepita-comida_bebidas-dataset/releases/download/datos/comidas_y_bebidas.csv` |
 | Metadata | `https://github.com/ignachor/sepita-comida_bebidas-dataset/releases/download/datos/metadata.json` |
 
-Requirements: Node 22.18+ (runs `.ts` natively) or any runtime with `fetch`. No dependencies.
+Si prefieres una API para consultar, consulta el [tutorial de la API REST](API-TUTORIAL.md).
 
-## 1. Check how fresh the data is
+Requisitos: Node 22.18+ (ejecuta `.ts` de forma nativa) o cualquier entorno con `fetch`. Sin dependencias.
+
+## 1. Comprobar qué tan reciente es el dato
 
 ```ts
 const meta = await fetchMetadata();
 // { fuente: "Jueves", fuente_actualizada: "2026-10-15T16:19:08", filas: 51391, ... }
 ```
 
-## 2. Load and parse the CSV
+## 2. Cargar y parsear el CSV
 
-Descriptions can contain commas and quotes, so `split(",")` is **not** enough.
-`examples/sepita.ts` includes a small RFC 4180 parser (`parseCsv`) and strips the UTF-8 BOM
-that the file starts with. `loadProducts()` returns typed `Product[]`.
+Las descripciones pueden contener comas y comillas, por lo que `split(",")` **no** alcanza.
+`examples/sepita.ts` incluye un parser RFC 4180 mínimo (`parseCsv`) y elimina el BOM UTF-8 con el que empieza el archivo.
+`loadProducts()` devuelve un `Product[]` tipado.
 
 ```ts
 const products = await loadProducts();
 ```
 
-## 3. Query it
+## 3. Consultar
 
 ```ts
-search(products, "yerba");   // text match on the description
-byEan(products, "7792710000175"); // same product, every chain
-cheapest(list);              // lowest precioPromedio in a list
+search(products, "yerba");        // coincidencia de texto en la descripción
+byEan(products, "7792710000175"); // el mismo producto en todas las cadenas
+cheapest(list);                   // menor precioPromedio de una lista
 ```
 
-Filter anything else with plain array methods, e.g.
+Cualquier otro filtro se hace con métodos de arreglos, por ejemplo:
 `products.filter(p => p.subcategoria === "Cervezas" && p.cadena === "Vea")`.
 
-## 4. Run the full example
+## 4. Ejecutar el ejemplo completo
 
 ```
 node examples/demo.ts
 ```
 
-Expected output (values change every day with the data; the shape stays the same):
+Salida esperada (los valores cambian cada día con los datos; el formato se mantiene):
 
 ```
 Source: Jueves (2026-10-15T16:19:08.834801), 51391 rows
@@ -65,9 +67,9 @@ AMANDA YERBA MATE CON PALO 1KG (EAN 7792710000175) across chains:
   Vea                      $5736.67  (18 branches)
 ```
 
-## Things to know
+## Cosas a tener en cuenta
 
-- Prices are **list prices per chain**: `precioMin/Promedio/Max` are computed across that chain's branches.
-- Prices are not cleaned: outliers exist (above, a 500 g yerba at $415 is almost certainly a data error in the source).
-- Categories are inferred from keywords, so a few products are misclassified (see the README).
-- The CSV is ~8 MB; cache it on your side instead of downloading it on every request.
+- Los precios son **precios de lista por cadena**: `precioMin/Promedio/Max` se calculan entre las sucursales de esa cadena.
+- Los precios no están depurados: existen valores atípicos (arriba, una yerba de 500 g a $415 es casi seguro un error del dato de origen).
+- Las categorías se infieren por palabras clave, por lo que algunos productos están mal clasificados (ver el README).
+- El CSV pesa ~8 MB; consérvalo en caché en lugar de descargarlo en cada consulta.

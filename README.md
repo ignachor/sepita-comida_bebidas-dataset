@@ -1,72 +1,80 @@
 # sepita-comida_bebidas-dataset
 
-Daily-updated CSV of **food and drink prices** in Argentina, built from the official
-[SEPA / Precios Claros](https://datos.produccion.gob.ar/dataset/sepa-precios) dump
+CSV de **precios de comidas y bebidas** en Argentina, actualizado a diario a partir del volcado oficial de
+[SEPA / Precios Claros](https://datos.produccion.gob.ar/dataset/sepa-precios)
 (Secretaría de Comercio, CC BY 4.0).
 
-## Download
+## Descarga
 
-Always the latest version: release [`datos`](../../releases/tag/datos)
-→ `comidas_y_bebidas.csv` (+ `metadata.json` with source date and row counts).
+Siempre la última versión: release [`datos`](../../releases/tag/datos)
+→ `productos.csv`, `precios.csv`, `comidas_y_bebidas.csv` y `metadata.json` (fecha de la fuente y cantidad de filas).
 
-Tutorials (runnable code in `examples/`): [REST API](docs/API-TUTORIAL.md) · [static CSV files](docs/TUTORIAL.md) · [roadmap: unattended updates](docs/ROADMAP.md).
+Tutoriales (el código ejecutable está en `examples/`): [API REST](docs/API-TUTORIAL.md) · [archivos CSV estáticos](docs/TUTORIAL.md) · [hoja de ruta: actualización sin intervención](docs/ROADMAP.md).
 
-## Files (release `datos`)
+## Archivos (release `datos`)
 
-| file | use |
+| archivo | uso |
 |---|---|
-| `productos.csv` | **start here.** One row per EAN, with a `busqueda` column for searching |
-| `precios.csv` | prices per EAN and chain (join on `ean`) |
-| `comidas_y_bebidas.csv` | both tables flattened (one row per chain + EAN) |
-| `metadata.json` | source date and row counts |
+| `productos.csv` | **punto de partida.** Una fila por EAN, con la columna `busqueda` para buscar |
+| `precios.csv` | precios por EAN y cadena (se une por `ean`) |
+| `comidas_y_bebidas.csv` | ambas tablas aplanadas (una fila por cadena + EAN) |
+| `metadata.json` | fecha de la fuente y cantidad de filas |
 
-### Searching
+### Búsqueda
 
-`busqueda` is lowercase, accent-free text with **every spelling of the name used by any chain**
-plus the brand, each word once. Match every word of the query as a prefix:
+`busqueda` es texto en minúsculas y sin tildes, con **todas las formas en que cualquier cadena escribe el nombre**
+más la marca, cada palabra una sola vez. Cada palabra de la consulta debe aparecer:
 
 ```sql
--- Postgres / SQLite: all words must appear
+-- Postgres / SQLite: deben aparecer todas las palabras
 SELECT * FROM productos
 WHERE busqueda LIKE '%fernet%' AND busqueda LIKE '%branca%' AND busqueda LIKE '%750%';
 ```
 
-Normalise the user's query the same way (lowercase, no accents, punctuation to spaces).
+Normaliza la consulta del usuario de la misma manera (minúsculas, sin tildes, puntuación convertida en espacios).
 
-## Columns (`comidas_y_bebidas.csv`)
+## Columnas (`comidas_y_bebidas.csv`)
 
-One row per **chain + EAN**; prices are aggregated across that chain's branches.
+Una fila por **cadena + EAN**; los precios se agregan entre las sucursales de esa cadena.
 
-| column | meaning |
+| columna | significado |
 |---|---|
-| `categoria`, `subcategoria` | Comidas / Bebidas and a subcategory (see below) |
-| `cadena` | chain name (SEPA `comercio_bandera_nombre`) |
-| `codigo_producto`, `es_ean` | valid EAN-13/8 (UPC-A converted to EAN-13) |
-| `descripcion`, `marca`, `cantidad_presentacion`, `unidad_presentacion` | product info |
-| `n_sucursales` | branches of that chain selling it |
-| `precio_min`, `precio_promedio`, `precio_max` | list price across branches |
-| `precio_referencia`, `unidad_referencia` | price per reference unit (kg, l…) |
+| `categoria`, `subcategoria` | Comidas / Bebidas y una subcategoría (ver más abajo) |
+| `cadena` | nombre de la cadena (`comercio_bandera_nombre` de SEPA) |
+| `codigo_producto`, `es_ean` | EAN-13/8 válido (UPC-A convertido a EAN-13) |
+| `descripcion`, `marca`, `cantidad_presentacion`, `unidad_presentacion` | datos del producto |
+| `n_sucursales` | sucursales de esa cadena que lo venden |
+| `precio_min`, `precio_promedio`, `precio_max` | precio de lista entre sucursales |
+| `precio_referencia`, `unidad_referencia` | precio por unidad de referencia (kg, l…) |
 
-Subcategories — Bebidas: aguas, aperitivos y destilados, cervezas, gaseosas y jugos, infusiones,
-vinos y espumantes. Comidas: carnes/pescados/fiambres, dulces/golosinas/snacks, frutas y verduras,
-lácteos y huevos, panificados y galletitas, pastas/arroz/cereales.
+Subcategorías — Bebidas: aguas, aperitivos y destilados, cervezas, gaseosas y jugos, infusiones,
+vinos y espumantes. Comidas: carnes, pescados y fiambres; dulces, golosinas y snacks; frutas y verduras;
+lácteos y huevos; panificados y galletitas; pastas, arroz y cereales.
 
-## Known limitations
+## Limitaciones conocidas
 
-- SEPA has **no category field**: categories are inferred from keywords in the (abbreviated)
-  description (`classifier.py`). Expect occasional misclassification.
-- Rows without a valid EAN (e.g. weighed meat or produce with an internal chain code) are dropped.
-- Prices come straight from the chains; outliers are not filtered.
+- SEPA **no tiene un campo de categoría**: las categorías se infieren a partir de palabras clave en la
+  descripción abreviada (`classifier.py`). Pueden aparecer clasificaciones erróneas.
+- Se descartan las filas sin EAN válido (por ejemplo, carne o verdura por peso con un código interno de la cadena).
+- Los precios vienen tal cual de las cadenas; no se filtran valores atípicos.
 
-## Update
+## Actualización
 
-`.github/workflows/update.yml` runs daily at 20:00 ART (and on demand from the Actions tab):
-it fetches the newest weekday zip from CKAN, runs `build_dataset.py` and replaces the release assets.
+El proceso corre en una PC local con `update.sh`, programado como tarea de Windows (`SepitaDatasetUpdate`, todos los días a las 20:00):
+descarga el volcado más reciente desde CKAN, ejecuta `build_dataset.py`, reemplaza los archivos de la release `datos`
+y, si existe `DATABASE_URL`, recarga las tablas `productos` y `precios` en Postgres/Supabase (`load.sql`).
+Al terminar elimina la carpeta local `dist/`.
 
-Local run (stdlib only, Python 3.11+):
+No corre en GitHub Actions porque `datos.produccion.gob.ar` responde 403 a los servidores de GitHub
+(el workflow `.github/workflows/update.yml` quedó solo para ejecución manual y hoy no es funcional).
+El plan para automatizarlo sin depender de la PC está en [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+Ejecución local (solo biblioteca estándar, Python 3.11+):
 
 ```
 python test_dataset.py
-python build_dataset.py                      # downloads latest dump into dist/
-python build_dataset.py --source <zip|dir>   # use a local dump
+python build_dataset.py                      # descarga el último volcado en dist/
+python build_dataset.py --source <zip|dir>   # usa un volcado local
+cp .env.example .env                         # opcional: define DATABASE_URL para cargar en la base
+./update.sh                                  # todo el flujo: build, release y carga en la base
 ```

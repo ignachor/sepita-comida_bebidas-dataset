@@ -1,17 +1,17 @@
-# Tutorial: using the REST API from another app
+# Tutorial: usar la API REST desde otra aplicación
 
-Supabase exposes the two tables (`productos`, `precios`) as a REST API (PostgREST). Your app only
-needs a URL and a public key. No backend and no dependencies are required.
+Supabase expone las dos tablas (`productos`, `precios`) como una API REST (PostgREST). Tu aplicación solo necesita
+una URL y una clave pública. No requiere backend ni dependencias.
 
 | | |
 |---|---|
-| Base URL | `https://fbhzibcingdanzlrslrq.supabase.co/rest/v1` |
+| URL base | `https://fbhzibcingdanzlrslrq.supabase.co/rest/v1` |
 | Header | `apikey: sb_publishable_MS2cjrHBl0_Jq1sqTSfckA_lzb7SWXT` |
 
-The publishable key is **meant to be public** (browser, mobile app). Row Level Security only
-allows `SELECT`; any write returns 401. Never ship the `service_role` key or the DB password.
+La clave publicable **está pensada para ser pública** (navegador, app móvil). La seguridad a nivel de fila (RLS) solo permite
+`SELECT`; cualquier escritura devuelve 401. Nunca incluyas en una app la clave `service_role` ni la contraseña de la base.
 
-## 1. Quick check with curl
+## 1. Prueba rápida con curl
 
 ```
 curl -G "https://fbhzibcingdanzlrslrq.supabase.co/rest/v1/productos" \
@@ -19,50 +19,50 @@ curl -G "https://fbhzibcingdanzlrslrq.supabase.co/rest/v1/productos" \
   --data-urlencode "busqueda=ilike.*fernet*" --data-urlencode "limit=3"
 ```
 
-## 2. The queries you need
+## 2. Las consultas que vas a necesitar
 
-| Goal | Request |
+| Objetivo | Petición |
 |---|---|
-| Search by words | `GET /productos?and=(busqueda.ilike.*fernet*,busqueda.ilike.*branca*)` |
-| Product + prices in one call | add `&select=ean,nombre,precios(cadena,precio_promedio)` |
-| One product | `GET /productos?ean=eq.7790290101602` |
-| Prices of one EAN, cheapest first | `GET /precios?ean=eq.7790290101602&order=precio_promedio.asc` |
-| Category browsing | `GET /productos?categoria=eq.Bebidas&subcategoria=eq.Cervezas` |
-| Pagination | `&limit=20&offset=40` (max 1000 rows per request) |
-| Total count | header `Prefer: count=exact`, read `Content-Range` |
+| Buscar por palabras | `GET /productos?and=(busqueda.ilike.*fernet*,busqueda.ilike.*branca*)` |
+| Producto y precios en una sola llamada | agregar `&select=ean,nombre,precios(cadena,precio_promedio)` |
+| Un producto | `GET /productos?ean=eq.7790290101602` |
+| Precios de un EAN, del más barato al más caro | `GET /precios?ean=eq.7790290101602&order=precio_promedio.asc` |
+| Navegar por categoría | `GET /productos?categoria=eq.Bebidas&subcategoria=eq.Cervezas` |
+| Paginación | `&limit=20&offset=40` (máximo 1000 filas por petición) |
+| Total de filas | header `Prefer: count=exact` y leer `Content-Range` |
 
-Joins work because `precios.ean` references `productos.ean`.
+Los joins funcionan porque `precios.ean` referencia a `productos.ean`.
 
-## 3. Use it from TypeScript
+## 3. Usarla desde TypeScript
 
-`examples/api.ts` wraps all of the above (typed, no dependencies). Copy it into your app:
+`examples/api.ts` encapsula todo lo anterior (tipado, sin dependencias). Cópialo a tu aplicación:
 
 ```ts
 import { searchProducts, getByEan, cheapestPrice } from "./api.ts";
 
-const results = await searchProducts("fernet branca 750", 10); // Product[] with prices
+const results = await searchProducts("fernet branca 750", 10); // Product[] con precios
 const best = cheapestPrice(results[0]);                          // { cadena, precio_promedio, ... }
 const detail = await getByEan(results[0].ean);
 ```
 
-Point it at another project or key with the env vars `SEPITA_URL` and `SEPITA_KEY`
-(in a browser bundler, replace `process.env` with your own config).
+Para apuntar a otro proyecto o clave, usa las variables de entorno `SEPITA_URL` y `SEPITA_KEY`
+(en un bundler de navegador, reemplaza `process.env` por tu propia configuración).
 
-### Rules that make search work
+### Reglas para que la búsqueda funcione
 
-1. **Normalise the user's text exactly like the dataset**: lowercase, no accents, punctuation to
-   spaces (`normalize()` in `api.ts`). `busqueda` is stored that way.
-2. **One `ilike` per word, combined with `and`**, so word order does not matter.
-3. Because normalised words only contain `a-z0-9`, they cannot break the filter syntax.
-   Do not pass raw user input into the URL.
+1. **Normaliza el texto del usuario igual que el dataset**: minúsculas, sin tildes y puntuación convertida en espacios
+   (`normalize()` en `api.ts`). La columna `busqueda` está guardada así.
+2. **Un `ilike` por palabra, combinados con `and`**, para que el orden de las palabras no importe.
+3. Como las palabras normalizadas solo contienen `a-z0-9`, no pueden romper la sintaxis del filtro.
+   No pases texto crudo del usuario en la URL.
 
-## 4. Run the full example
+## 4. Ejecutar el ejemplo completo
 
 ```
 node examples/api-demo.ts
 ```
 
-Expected output (prices change daily; the shape stays the same):
+Salida esperada (los precios cambian a diario; el formato se mantiene):
 
 ```
 Search "Fernet Branca 750" -> 3 results
@@ -76,7 +76,7 @@ By EAN 7790290101459: Bebidas / Aperitivos y destilados, median $7200
   La Anonima: $6866.67 (183 branches)
 ```
 
-## Alternative: supabase-js
+## Alternativa: supabase-js
 
 ```ts
 import { createClient } from "@supabase/supabase-js";
@@ -85,9 +85,9 @@ const { data } = await sb.from("productos").select("ean,nombre,precios(cadena,pr
   .ilike("busqueda", "%fernet%").ilike("busqueda", "%branca%").limit(10);
 ```
 
-## Things to know
+## Cosas a tener en cuenta
 
-- Data refreshes daily (see the `datos` release `metadata.json` for the source date).
-- Prices are list prices per chain and are not cleaned: expect outliers (e.g. $994.90 for a 750 cc fernet).
-- Categories are keyword-based; a few products are misclassified.
-- Free-tier Supabase pauses a project after a week without activity. A daily reload prevents it.
+- Los datos se actualizan a diario (la fecha de la fuente está en `metadata.json` de la release `datos`).
+- Los precios son precios de lista por cadena y no están depurados: hay valores atípicos (por ejemplo, $994,90 para un fernet de 750 cc).
+- Las categorías se infieren por palabras clave; algunos productos están mal clasificados.
+- En el plan gratuito de Supabase, un proyecto se pausa tras una semana sin actividad. La recarga diaria lo evita.

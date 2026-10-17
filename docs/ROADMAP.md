@@ -1,33 +1,33 @@
-# Roadmap: unattended updates
+# Hoja de ruta: actualizaciones sin intervención
 
-## Current state (option C, in use)
+## Estado actual (opción C, en uso)
 
-`update.sh` runs on the owner's PC through the Windows task `SepitaDatasetUpdate` (daily 20:00).
-It downloads the SEPA dump, builds the CSVs, publishes the `datos` release and reloads Supabase.
-It only runs while the PC is on (`StartWhenAvailable` catches up missed runs).
+`update.sh` corre en la PC del propietario mediante la tarea de Windows `SepitaDatasetUpdate` (todos los días a las 20:00).
+Descarga el volcado de SEPA, genera los CSV, publica la release `datos` y recarga Supabase.
+Solo se ejecuta mientras la PC está encendida (`StartWhenAvailable` recupera las ejecuciones perdidas).
 
-## Why it cannot run in the cloud as-is (verified 2026-10-17)
+## Por qué no puede correr en la nube tal como está (verificado el 2026-10-17)
 
-- `datos.produccion.gob.ar` answers **403** to GitHub-hosted runners (API, dataset page and zip).
-- The daily dump is **324 MB** (~92 s to download) and takes ~6 min of CPU to process.
-  It is a zip of zips, so it cannot be streamed. Supabase Edge Functions (memory and
-  wall-time limits) cannot do it. Their limits come from Supabase docs, not re-verified.
+- `datos.produccion.gob.ar` responde **403** a los runners alojados por GitHub (API, página del dataset y zip).
+- El volcado diario pesa **324 MB** (~92 s de descarga) y requiere ~6 min de CPU para procesarse.
+  Es un zip de zips, por lo que no se puede procesar en streaming. Las Edge Functions de Supabase (límites de memoria y
+  de tiempo de ejecución) no pueden hacerlo. Esos límites provienen de la documentación de Supabase y no se volvieron a verificar.
 
-## Planned: option B, always-on VM
+## Planificado: opción B, VM siempre encendida
 
-Run `update.sh` on a free always-on VM (e.g. Oracle Cloud Free Tier, Ubuntu).
+Ejecutar `update.sh` en una VM gratuita que esté siempre encendida (por ejemplo, Oracle Cloud Free Tier con Ubuntu).
 
-1. **Gate: test the IP first.** From the VM: `curl -sI https://datos.produccion.gob.ar/api/3/action/package_show?id=sepa-precios`.
-   Only continue on `HTTP/2 200`. A datacenter IP may be blocked just like GitHub's.
-2. Install `python3`, `git`, `gh`, `postgresql-client`; `gh auth login`.
-3. Clone the repo and create `.env` from `.env.example` (use the Supabase connection string).
-4. Schedule with cron, e.g. `0 20 * * * /path/to/update.sh >> /path/to/update.log 2>&1`
-   (mind the VM timezone: ART is UTC-3).
-5. Disable the Windows task `SepitaDatasetUpdate` to avoid two writers.
+1. **Condición previa: probar la IP.** Desde la VM: `curl -sI https://datos.produccion.gob.ar/api/3/action/package_show?id=sepa-precios`.
+   Continuar solo si responde `HTTP/2 200`. Una IP de centro de datos podría estar bloqueada igual que las de GitHub.
+2. Instalar `python3`, `git`, `gh` y `postgresql-client`; ejecutar `gh auth login`.
+3. Clonar el repositorio y crear `.env` a partir de `.env.example` (con la cadena de conexión de Supabase).
+4. Programar con cron, por ejemplo: `0 20 * * * /ruta/a/update.sh >> /ruta/a/update.log 2>&1`
+   (atención a la zona horaria de la VM: ART es UTC-3).
+5. Deshabilitar la tarea de Windows `SepitaDatasetUpdate` para evitar dos procesos escribiendo a la vez.
 
-If the VM IP is blocked: try another provider, or keep option C.
+Si la IP de la VM está bloqueada: probar con otro proveedor o mantener la opción C.
 
-## Rejected for now
+## Descartado por ahora
 
-- **Supabase pulls the release CSVs (pg_cron + Edge Function):** only moves the 7 MB load; the
-  heavy build would still run on the PC.
+- **Supabase descarga los CSV de la release (pg_cron + Edge Function):** solo traslada la carga de 7 MB; el
+  procesamiento pesado seguiría ejecutándose en la PC.
