@@ -9,7 +9,7 @@ Daily-updated CSV of **food and drink prices** in Argentina, built from the offi
 Always the latest version: release [`datos`](../../releases/tag/datos)
 → `comidas_y_bebidas.csv` (+ `metadata.json` with source date and row counts).
 
-TypeScript tutorial: [`docs/TUTORIAL.md`](docs/TUTORIAL.md) (runnable code in `examples/`).
+Tutorials (runnable code in `examples/`): [REST API](docs/API-TUTORIAL.md) · [static CSV files](docs/TUTORIAL.md) · [roadmap: unattended updates](docs/ROADMAP.md).
 
 ## Files (release `datos`)
 
