@@ -1,0 +1,29 @@
+name: Update dataset
+
+on:
+  schedule:
+    - cron: "0 23 * * *" # 20:00 Argentina time
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python test_dataset.py
+      - run: python build_dataset.py
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view datos >/dev/null 2>&1 || gh release create datos \
+            --title "Dataset de comidas y bebidas (SEPA)" \
+            --notes "Actualizado automáticamente todos los días. Fuente: Precios Claros / SEPA, Secretaría de Comercio (CC BY 4.0)."
+          gh release upload datos dist/comidas_y_bebidas.csv dist/metadata.json --clobber
