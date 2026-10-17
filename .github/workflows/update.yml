@@ -1,8 +1,9 @@
 name: Update dataset
 
 on:
-  schedule:
-    - cron: "0 23 * * *" # 20:00 Argentina time
+  # schedule disabled: datos.produccion.gob.ar returns 403 to GitHub-hosted runners
+  # schedule:
+  #   - cron: "0 23 * * *" # 20:00 Argentina time
   workflow_dispatch:
 
 permissions:
