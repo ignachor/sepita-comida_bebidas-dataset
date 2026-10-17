@@ -1,0 +1,10 @@
+name: Probe
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -s -o /dev/null -w "api %{http_code}\n" -A "Mozilla/5.0" "https://datos.produccion.gob.ar/api/3/action/package_show?id=sepa-precios"
+          curl -s -o /dev/null -w "home %{http_code}\n" -A "Mozilla/5.0" "https://datos.produccion.gob.ar/dataset/sepa-precios"
+          curl -s -o /dev/null -I -w "zip %{http_code}\n" -A "Mozilla/5.0" "https://datos.produccion.gob.ar/dataset/6f47ec76-d1ce-4e34-a7e1-621fe9b1d0b5/resource/d076720f-a7f0-4af8-b1d6-1b99d5a90c14/download/sepa_jueves.zip"
