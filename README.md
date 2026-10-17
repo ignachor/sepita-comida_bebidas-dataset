@@ -11,7 +11,29 @@ Always the latest version: release [`datos`](../../releases/tag/datos)
 
 TypeScript tutorial: [`docs/TUTORIAL.md`](docs/TUTORIAL.md) (runnable code in `examples/`).
 
-## Columns
+## Files (release `datos`)
+
+| file | use |
+|---|---|
+| `productos.csv` | **start here.** One row per EAN, with a `busqueda` column for searching |
+| `precios.csv` | prices per EAN and chain (join on `ean`) |
+| `comidas_y_bebidas.csv` | both tables flattened (one row per chain + EAN) |
+| `metadata.json` | source date and row counts |
+
+### Searching
+
+`busqueda` is lowercase, accent-free text with **every spelling of the name used by any chain**
+plus the brand, each word once. Match every word of the query as a prefix:
+
+```sql
+-- Postgres / SQLite: all words must appear
+SELECT * FROM productos
+WHERE busqueda LIKE '%fernet%' AND busqueda LIKE '%branca%' AND busqueda LIKE '%750%';
+```
+
+Normalise the user's query the same way (lowercase, no accents, punctuation to spaces).
+
+## Columns (`comidas_y_bebidas.csv`)
 
 One row per **chain + EAN**; prices are aggregated across that chain's branches.
 

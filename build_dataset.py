@@ -3,7 +3,11 @@ import argparse
 import csv
 import io
 import json
+import re
+import statistics
 import sys
+import unicodedata
+from collections import Counter
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -20,6 +24,12 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KH
 
 def fetch(url, timeout):
     return urllib.request.urlopen(urllib.request.Request(url, headers=HEADERS), timeout=timeout)
+
+
+def normalize(text):
+    """Lowercase, no accents, punctuation -> spaces. 'FERNET Branca, 750cc' -> 'fernet branca 750cc'."""
+    t = unicodedata.normalize("NFKD", text.lower()).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", " ", t).strip()
 
 
 def valid_ean(code):
@@ -104,10 +114,12 @@ def aggregate(source):
             if a is None:
                 agg[(banner, ean)] = dict(c=c, ean=row[4].strip(), d=" ".join(row[5].split()), m=row[8].strip(),
                                           q=row[6].strip(), u=row[7].strip(), s={row[2]}, lo=p, hi=p, sum=p,
-                                          n=1, ref=ref, ru=row[12].strip())
+                                          n=1, ref=ref, ru=row[12].strip(),
+                                          ds=Counter([" ".join(row[5].split())]), ms=Counter([row[8].strip()]))
             else:
                 a["s"].add(row[2]); a["lo"] = min(a["lo"], p); a["hi"] = max(a["hi"], p)
                 a["sum"] += p; a["n"] += 1
+                a["ds"][" ".join(row[5].split())] += 1; a["ms"][row[8].strip()] += 1
                 if a["ref"] is None:
                     a["ref"] = ref
     return agg, dropped
@@ -123,6 +135,41 @@ def write(agg, out):
                         round(a["lo"], 2), round(a["sum"] / a["n"], 2), round(a["hi"], 2),
                         "" if a["ref"] is None else round(a["ref"], 2), a["ru"]])
     return len(items)
+
+
+PRODUCT_COLUMNS = ["ean", "nombre", "marca", "categoria", "subcategoria", "cantidad_presentacion",
+                   "unidad_presentacion", "n_cadenas", "precio_mediano", "busqueda"]
+PRICE_COLUMNS = ["ean", "cadena", "n_sucursales", "precio_min", "precio_promedio", "precio_max",
+                 "precio_referencia", "unidad_referencia"]
+
+
+def write_tables(agg, out):
+    """productos.csv (one row per EAN, searchable) + precios.csv (one row per EAN and chain)."""
+    by_ean = {}
+    for (banner, ean), a in agg.items():
+        by_ean.setdefault(ean, []).append((banner, a))
+    with open(out / "productos.csv", "w", encoding="utf-8-sig", newline="") as fp, \
+            open(out / "precios.csv", "w", encoding="utf-8-sig", newline="") as fq:
+        wp, wq = csv.writer(fp), csv.writer(fq)
+        wp.writerow(PRODUCT_COLUMNS)
+        wq.writerow(PRICE_COLUMNS)
+        for ean in sorted(by_ean):
+            entries = by_ean[ean]
+            descs, brands = Counter(), Counter()
+            for _, a in entries:
+                descs.update(a["ds"])
+                brands.update(b for b in a["ms"].elements() if b and b.upper() not in ("S/D", "-", "SIN MARCA"))
+            name = max(descs, key=lambda d: (descs[d], len(d)))
+            brand = brands.most_common(1)[0][0] if brands else ""
+            first = entries[0][1]
+            # search text = every spelling of the name + brand, each word once
+            words = dict.fromkeys(normalize(" ".join([*descs, *brands])).split())
+            wp.writerow([ean, name, brand, first["c"][0], first["c"][1], first["q"], first["u"], len(entries),
+                         round(statistics.median(a["sum"] / a["n"] for _, a in entries), 2), " ".join(words)])
+            for banner, a in sorted(entries, key=lambda e: e[1]["sum"] / e[1]["n"]):
+                wq.writerow([ean, banner, len(a["s"]), round(a["lo"], 2), round(a["sum"] / a["n"], 2),
+                             round(a["hi"], 2), "" if a["ref"] is None else round(a["ref"], 2), a["ru"]])
+    return len(by_ean)
 
 
 def main():
@@ -142,7 +189,8 @@ def main():
         meta = {"fuente": res["name"], "fuente_actualizada": res["last_modified"]}
     agg, dropped = aggregate(source)
     n = write(agg, out / "comidas_y_bebidas.csv")
-    meta.update(filas=n, filas_descartadas_ean_invalido=dropped)
+    n_prod = write_tables(agg, out)
+    meta.update(filas=n, productos=n_prod, filas_descartadas_ean_invalido=dropped)
     (out / "metadata.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2))
     if not args.source:
         Path(source).unlink()

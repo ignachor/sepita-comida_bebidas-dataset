@@ -14,3 +14,7 @@ assert cls("AGUA MICELAR CON ALOE VERA") is None
 assert cls("SHAMPOO MANZANA") is None
 assert cls("DETERGENTE LIMON") is None
 print("ok")
+
+from build_dataset import normalize
+assert normalize("FERNET Branca, 750cc ÑOQUIS") == "fernet branca 750cc noquis"
+print("ok normalize")

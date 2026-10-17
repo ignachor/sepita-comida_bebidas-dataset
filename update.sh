@@ -12,5 +12,5 @@ python3 build_dataset.py
 gh release view datos >/dev/null 2>&1 || gh release create datos \
   --title "Dataset de comidas y bebidas (SEPA)" \
   --notes "Actualizado automáticamente todos los días. Fuente: Precios Claros / SEPA, Secretaría de Comercio (CC BY 4.0)."
-gh release upload datos dist/comidas_y_bebidas.csv dist/metadata.json --clobber
+gh release upload datos dist/productos.csv dist/precios.csv dist/comidas_y_bebidas.csv dist/metadata.json --clobber
 echo "published $(date -Is)"
