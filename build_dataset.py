@@ -15,6 +15,11 @@ COLUMNS = ["categoria", "subcategoria", "cadena", "codigo_producto", "es_ean", "
            "cantidad_presentacion", "unidad_presentacion", "n_sucursales", "precio_min",
            "precio_promedio", "precio_max", "precio_referencia", "unidad_referencia"]
 csv.field_size_limit(10**7)
+HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"}
+
+
+def fetch(url, timeout):
+    return urllib.request.urlopen(urllib.request.Request(url, headers=HEADERS), timeout=timeout)
 
 
 def valid_ean(code):
@@ -29,14 +34,14 @@ def valid_ean(code):
 
 
 def latest_resource():
-    with urllib.request.urlopen(CKAN, timeout=60) as r:
+    with fetch(CKAN, 60) as r:
         res = json.load(r)["result"]["resources"]
     zips = [x for x in res if (x.get("format") or "").upper() == "ZIP"]
     return max(zips, key=lambda x: x["last_modified"])
 
 
 def download(url, dest):
-    with urllib.request.urlopen(url, timeout=120) as r, open(dest, "wb") as f:
+    with fetch(url, 120) as r, open(dest, "wb") as f:
         while chunk := r.read(1 << 20):
             f.write(chunk)
 
