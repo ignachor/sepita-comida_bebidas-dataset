@@ -12,6 +12,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+import normalizer
 from classifier import cls
 
 CKAN = "https://datos.produccion.gob.ar/api/3/action/package_show?id=sepa-precios"
@@ -138,7 +139,8 @@ def write(agg, out):
 
 
 PRODUCT_COLUMNS = ["ean", "nombre", "marca", "categoria", "subcategoria", "cantidad_presentacion",
-                   "unidad_presentacion", "n_cadenas", "precio_mediano", "busqueda"]
+                   "unidad_presentacion", "n_cadenas", "precio_mediano", "busqueda",
+                   "marca_normalizada", "cantidad", "unidad", "nombre_normalizado"]
 PRICE_COLUMNS = ["ean", "cadena", "n_sucursales", "precio_min", "precio_promedio", "precio_max",
                  "precio_referencia", "unidad_referencia"]
 
@@ -148,24 +150,33 @@ def write_tables(agg, out):
     by_ean = {}
     for (banner, ean), a in agg.items():
         by_ean.setdefault(ean, []).append((banner, a))
+    products = {}
+    for ean, entries in by_ean.items():
+        descs, brands = Counter(), Counter()
+        for _, a in entries:
+            descs.update(a["ds"])
+            brands.update(b for b in a["ms"].elements() if b and b.upper() not in ("S/D", "-", "SIN MARCA"))
+        products[ean] = dict(entries=entries, descs=descs, brands=brands,
+                             name=max(descs, key=lambda d: (descs[d], len(d))),
+                             brand=brands.most_common(1)[0][0] if brands else "")
+    index = normalizer.Brands(normalizer.load_overrides())
     with open(out / "productos.csv", "w", encoding="utf-8-sig", newline="") as fp, \
             open(out / "precios.csv", "w", encoding="utf-8-sig", newline="") as fq:
         wp, wq = csv.writer(fp), csv.writer(fq)
         wp.writerow(PRODUCT_COLUMNS)
         wq.writerow(PRICE_COLUMNS)
-        for ean in sorted(by_ean):
-            entries = by_ean[ean]
-            descs, brands = Counter(), Counter()
-            for _, a in entries:
-                descs.update(a["ds"])
-                brands.update(b for b in a["ms"].elements() if b and b.upper() not in ("S/D", "-", "SIN MARCA"))
-            name = max(descs, key=lambda d: (descs[d], len(d)))
-            brand = brands.most_common(1)[0][0] if brands else ""
+        for ean in sorted(products):
+            p = products[ean]
+            entries, name, brand = p["entries"], p["name"], p["brand"]
             first = entries[0][1]
-            # search text = every spelling of the name + brand, each word once
-            words = dict.fromkeys(normalize(" ".join([*descs, *brands])).split())
+            brand_n = index.complete(brand, name)
+            name_n, value, base = normalizer.clean_name(name, first["q"], first["u"])
+            # search text = every spelling of the name + brand (raw and normalised), each word once
+            words = dict.fromkeys(normalize(" ".join([*p["descs"], *p["brands"], brand_n, name_n])).split())
             wp.writerow([ean, name, brand, first["c"][0], first["c"][1], first["q"], first["u"], len(entries),
-                         round(statistics.median(a["sum"] / a["n"] for _, a in entries), 2), " ".join(words)])
+                         round(statistics.median(a["sum"] / a["n"] for _, a in entries), 2), " ".join(words),
+                         brand_n, "" if value is None else normalizer.fmt_num(value), "" if value is None else base,
+                         normalizer.display_name(name_n, value, base)])
             for banner, a in sorted(entries, key=lambda e: e[1]["sum"] / e[1]["n"]):
                 wq.writerow([ean, banner, len(a["s"]), round(a["lo"], 2), round(a["sum"] / a["n"], 2),
                              round(a["hi"], 2), "" if a["ref"] is None else round(a["ref"], 2), a["ru"]])
