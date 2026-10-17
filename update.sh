@@ -13,4 +13,10 @@ gh release view datos >/dev/null 2>&1 || gh release create datos \
   --title "Dataset de comidas y bebidas (SEPA)" \
   --notes "Actualizado automáticamente todos los días. Fuente: Precios Claros / SEPA, Secretaría de Comercio (CC BY 4.0)."
 gh release upload datos dist/productos.csv dist/precios.csv dist/comidas_y_bebidas.csv dist/metadata.json --clobber
+# optional: load into Postgres/Supabase when DATABASE_URL is set (in the env or in .env)
+[ -f .env ] && set -a && . ./.env && set +a
+if [ -n "${DATABASE_URL:-}" ]; then
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -f load.sql
+  echo "loaded into database"
+fi
 echo "published $(date -Is)"
